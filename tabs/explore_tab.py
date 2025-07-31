@@ -1,5 +1,6 @@
 import streamlit as st
 import plotly.express as px
+import pandas as pd
 
 from graphics.charts import apply_chart_formatting
 from data_processing.data_processing import metrics, groups, load_and_preprocess_data
@@ -32,9 +33,13 @@ def render(data):
     # Remove NaNs in other selection columns to avoid showing 'nan' in dropdowns
     data = data.dropna(subset=["Hot water usage pattern", "Hot water billing type", "Solar", "Heater", "Heater control", "Postcode"])
 
-    groups_fixed = [g if g != "Location" else "Postcode" for g in groups]
+  
     f_data = data.copy()
 
+    if "Entered Postcode" in data.columns:
+        groups_fixed = [g if g != "Location" else "Entered Postcode" for g in groups]
+    else:
+        groups_fixed = [g if g != "Location" else "Postcode" for g in groups]
 
     # Write heading at the top of tab.
     with st.container():
@@ -92,12 +97,26 @@ def render(data):
                                 rep_postcodes.append(rep_pc)
                             else:
                                 st.warning(f"Postcode {pc} not found in climate zone database.")
-
                         # Filter data to include all representative postcodes found
                         if rep_postcodes:
                             data = data[data["Postcode"].isin(rep_postcodes)]
-                        else:
-                            st.warning("No valid postcodes entered.")
+
+                            # Create rows for each entered postcode, duplicating where reps overlap
+                            frames = []
+                            for pc in entered_postcodes:
+                                rep_pc = get_rep_postcode_from_postcode(pc, postcode_df)
+                                if rep_pc:
+                                    subset = data[data["Postcode"] == rep_pc].copy()
+                                    subset["Entered Postcode"] = pc  # assign the entered value manually
+                                    frames.append(subset)
+
+                            # Combine all rows — now duplicates will appear if reps overlap
+                            if frames:
+                                data = pd.concat(frames, ignore_index=True)
+                                f_data = data.copy()
+                                groups_fixed = [g if g != "Location" else "Entered Postcode" for g in groups]
+                            else:
+                                st.warning("No valid postcodes entered.")
 
                     except ValueError:
                         st.warning("Please enter valid numeric postcodes separated by commas.")
@@ -235,4 +254,17 @@ def render(data):
             agg_dict = {col: "mean" for col in metrics}
             show_data = show_data.groupby(table_groups, as_index=False).agg(agg_dict)
         show_data = show_data.sort_values("Net present cost ($)")
+        
+         # Rename long columns to shorter versions
+        show_data = show_data.rename(columns={
+             "Net present cost ($)": "NPC ($)",
+            "Annual cost ($/yr)": "Annual ($/yr)",
+            "Up front cost ($)": "CapEx ($)",
+              "Decrease in solar export revenue ($/yr)": "Δ FIT ($/yr)",
+             "Rebates ($)": "Rebates",
+             "CO2 emissions (tons/yr)": "CO₂ (t/yr)",
+             "Annual energy consumption (kWh)" : "Annual (KWh)"
+            # Add more as needed
+         })
+
         st.dataframe(show_data.style.format(precision=2), hide_index=True)

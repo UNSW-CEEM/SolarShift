@@ -126,12 +126,6 @@ def build_interactive_data_filter(
     
     # Now safely convert to int
     data["Household occupants"] = data["Household occupants"].astype(int)
-
-    # Location filter removed by Arastoo
-    #help_text = make_big_label("Location")
-    #values["location"] = create_select(data, "Location")
-    #data = filter_data(data, "Location", values["location"])
-    
     # Household occupants filter
     help_text = make_big_label("Household occupants")
     values["household_occupants"] = create_select(data, "Household occupants", help_text)
@@ -149,10 +143,6 @@ def build_interactive_data_filter(
     values["solar"] = create_select(data, "Solar", help_text)
     data = filter_data(data, "Solar", values["solar"])
     
-    # Filter out gas-based options if solar is selected
-    #if values["solar"] == "Yes":
-        #data = data[~data["Heater"].isin(["Gas Instant", "Gas Storage", "Solar Thermal"])]
-
     # 6 type filter
     help_text = make_big_label("Heater")
     values["heater"] = create_select(data, "Heater", help_text)

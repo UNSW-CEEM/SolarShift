@@ -9,14 +9,13 @@ from data_processing.data_processing import (
 )
 from tabs import tab_control, home_tab, begin_tab, explore_tab, compare_tab, assumptions_and_details_tab
 
-
-
 # Get image used as icon in web browser tab.
 im = Image.open("images/favicon.png")
 
 # Configure Streamlit page settings
 st.set_page_config(page_title="SolarShift", layout="wide", page_icon=im)
 
+st.caption("🔄 SolarShift App – Version 2.0 (Deployed July 2025)")
 # Set content width to 90% of browser width
 st.html(
     """

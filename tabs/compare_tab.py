@@ -13,27 +13,6 @@ def render(data):
     # Load data and postcode mapping on each rerun
     data, postcode_df = load_and_preprocess_data()
     
-    # Ask for postcode to filter dataset to climate zone first
-    #postcode = st.text_input(
-        #"Enter your postcode",
-        #value="",
-        #max_chars=4,
-        #help="Type your postcode without spinner.",
-    #)
-
-    #rep_postcode = None
-    #if postcode and postcode.isdigit():
-        #rep_postcode = get_rep_postcode_from_postcode(int(postcode), postcode_df)
-        #if rep_postcode:
-            #data = data[data["Location"] == rep_postcode]
-        #else:
-            #st.warning("No data found for this postcode, please check your entry.")
-
-    #st.markdown(
-        #"<h3 style='text-align: center; color: #FFA000;'>Compare two hot water systems in detail</h1>",
-       # unsafe_allow_html=True,
-    #)
-    
     # Remembering postcode input from Begin tab
     data_two_slice = data.copy()
     loc = st.session_state.get("select_location_two")
@@ -45,10 +24,6 @@ def render(data):
     if loc:
         data_three_slice = data_three_slice[data_three_slice["Location"] == loc]
 
-
-
-    #st.write("DEBUG data_two_slice first 3 rows:", data_two_slice.head(3))
-    #st.write("DEBUG data_three_slice first 3 rows:", data_three_slice.head(3))
 
     # Create 3-column layout
     left, middle, right = st.columns([1.75, 5, 1.75])
@@ -69,8 +44,6 @@ def render(data):
         with st.expander("Alternative system", expanded=True):
             data_three, values_three = build_interactive_data_filter(data_three_slice, key_version="three")
 
-    #st.write("DEBUG COMPARE current system selected =", values_two)
-    #st.write("DEBUG COMPARE alternative system selected =", values_three)
 
     with middle:
         # Prepare data for comparison charts
@@ -142,10 +115,47 @@ def render(data):
             })
             st.dataframe(comp, hide_index=True)
 
+        # Define column renaming
+        column_rename_map = {
+            "Net present cost ($)": "NPC ($)",
+            "Annual cost ($/yr)": "Annual ($/yr)",
+            "Up front cost ($)": "CapEx ($)",
+            "Decrease in solar export revenue ($/yr)": "Δ FIT ($/yr)",
+            "Rebates ($)": "Rebates",
+            "CO2 emissions (tons/yr)": "CO₂ (t/yr)",
+            "Annual energy consumption (kWh)": "Annual (kWh)",
+            "Annual supply cost ($/yr)": "Annual supply ($/yr)",  # <-- Add SMA here
+            # Add more if needed
+        }
+
         # Tabular metrics
         with st.expander("Tabular performance comparison", expanded=False):
             table_df = system_comparison_table_data.loc[:, ["System"] + groups + metrics]
-            st.dataframe(table_df, hide_index=True, column_config={
+            table_df = table_df.rename(columns=column_rename_map)
+
+            # Drop columns where all values are zero (excluding categorical columns)
+            numeric_cols = table_df.select_dtypes(include=["float", "int"]).columns
+            zero_cols = [col for col in numeric_cols if table_df[col].sum() == 0]
+            table_df = table_df.drop(columns=zero_cols)
+
+            # Format selected columns for display only (no change to original data)
+            formatted_df = table_df.copy()
+            if "NPC ($)" in formatted_df.columns:
+                formatted_df["NPC ($)"] = formatted_df["NPC ($)"].map(lambda x: f"{x:,.0f}")
+            if "Annual ($/yr)" in formatted_df.columns:
+                formatted_df["Annual ($/yr)"] = formatted_df["Annual ($/yr)"].map(lambda x: f"{x:,.0f}")
+            if "Δ FIT ($/yr)" in formatted_df.columns:
+                formatted_df["Δ FIT ($/yr)"] = formatted_df["Δ FIT ($/yr)"].map(lambda x: f"{x:,.0f}")
+            if "CO₂ (t/yr)" in formatted_df.columns:
+                formatted_df["CO₂ (t/yr)"] = formatted_df["CO₂ (t/yr)"].map(lambda x: f"{x:.2f}")
+            if "Annual (kWh)" in formatted_df.columns:
+                formatted_df["Annual (kWh)"] = formatted_df["Annual (kWh)"].map(lambda x: f"{x:,.0f}")
+
+            st.dataframe(formatted_df, hide_index=True, column_config={
+                "Annual ($/yr)": st.column_config.NumberColumn(width="small"),
+                "Annual supply ($/yr)": st.column_config.NumberColumn(width="small"),
+                "Δ FIT ($/yr)": st.column_config.NumberColumn(width="small"),
+                "CO₂ (t/yr)": st.column_config.NumberColumn(width="small"),
                 "Location": None,
                 "Household occupants": None,
                 "Hot water billing type": None,

@@ -42,8 +42,6 @@ def render(data, postcode_df):
         st.markdown("Complete the questions below and we will estimate your hot water heating costs.")
         st.markdown("Privacy", help="Your data is not stored by SolarShift Customer Hot Water Road Map tool. The tool may use data only for research purposes without any personal or confidential information.")
 
-        #postcode = st.text_input("Enter your postcode", value="", max_chars=4)
-
         # Remember postcode using session state
         if "postcode" not in st.session_state:
             st.session_state["postcode"] = ""
@@ -89,9 +87,6 @@ def render(data, postcode_df):
         # Save current values for persistence
         st.session_state["begin_tab_values"] = values.copy()
 
-
-        #data, values = build_interactive_data_filter(all_systems_data, key_version="one", big_labels=big_labels)
-
         for k in values:
             if isinstance(values[k], str):
                 values[k] = values[k].strip()
@@ -131,10 +126,6 @@ def render(data, postcode_df):
                 key="Net present cost ($) simple",
             )
         
-        # Skip Payback section if Electric + "Active matching to solar"
-        #if values["heater"] == "Electric" and values.get("heater_control") == "Active matching to solar":
-           # return
-
         # Payback period calculation and logic from Gas and Electric to HPs Systems
 
         """If user select "Electric", "Gas Instant", "Gas Storage" as current system, Payback period question comes up and then there are options to select for End-of-life or standard payback period or not looking for changing system"""
@@ -276,8 +267,6 @@ def render(data, postcode_df):
                         else:
                             st.info("Could not find matching heat pump scenarios for payback calculation.")
 
-
-
         #  Environmental summary 
         """It slways comes up for current system, howver, ifPayback period question triggered it shows the emission comparison between current and HPs systems """
 
@@ -306,16 +295,6 @@ def render(data, postcode_df):
             chart.update_traces(texttemplate="%{y:.2f}")  # force two decimals on top
             st.plotly_chart(chart, use_container_width=True)
 
-        
-        # Debug to check what data is passed before compare buttons
-        #st.write("DEBUG data (filtered to postcode) before compare buttons:", data.head(5))
-        #st.write("DEBUG all_systems_data (copied after postcode filter):", all_systems_data.head(5))
-        #st.write("DEBUG user filter values passed to compare buttons:", values)
-        #st.write("DEBUG user filter values for CURRENT system:", values)
-        #config_check = create_basic_heat_pump_config(values.copy())
-        #st.write("DEBUG user filter values for ALTERNATIVE system:", config_check)
-    
-
         # Compare buttons
         st.markdown("<h3 style='color: #FFA000;'>Compare your hot water system with other options:</h3>", unsafe_allow_html=True)
         st.markdown("Please go to **Compare** tab if you would like to further explore saving opportunities with heat-pumps (i.e. solar-soak control).</h3>", unsafe_allow_html=True)
@@ -326,9 +305,6 @@ def render(data, postcode_df):
             ("Compare with Solar Thermal", None, create_solar_thermal),
             ("Compare with Gas Instant", None, create_gas_instant)
         ]
-        # Filter out gas or solar thermal comparisons if current system has solar
-        #if values.get("solar") == "Yes":
-            #compare_options = [item for item in compare_options if "Gas" not in item[0] and "Solar Thermal" not in item[0]]
 
         for text, help, func in compare_options:
             def compare_callback(config=func(values.copy())):

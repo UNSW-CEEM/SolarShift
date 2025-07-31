@@ -81,6 +81,4 @@ def load_and_preprocess_data():
 
     data["Household occupants"] = data["Household occupants"].astype(int)
 
-    #st.write("DEBUG after preprocessing sample:", data.head(2))
-
     return data, postcode_df
