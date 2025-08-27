@@ -3,17 +3,22 @@ import streamlit as st
 
 def render(data):
     """Renders the Details tab contents."""
-    st.markdown("""
 
+    # --- Table of contents with working anchor links ---
+    st.markdown("""
     ## Contents
 
-    1. [Methodology](#methodology)
-    2. [Hot water heaters](#hot-water-heaters)
-    3. [Billing types (tariffs)](#billing-types)
-    4. [Hot water control](#hot-water-control)
-    5. [Hot water usage patterns](#hot-water-usage-patterns)
-    6. [Options explored](#options-explored)
+    - <a href="#methodology">1. Methodology</a>  
+    - <a href="#hot-water-heaters">2. Hot water heaters</a>  
+    - <a href="#billing-types">3. Billing types (tariffs)</a>  
+    - <a href="#hot-water-control">4. Hot water control</a>  
+    - <a href="#hot-water-usage-patterns">5. Hot water usage patterns</a>  
+    - <a href="#options-explored">6. Options explored</a>
+    """, unsafe_allow_html=True)
+    
 
+    st.markdown("""
+    <a name="methodology"></a>
     ## 1. Methodology
 
     Hot water system operation was calculated using a two-stage methodology. In
@@ -86,7 +91,11 @@ def render(data):
 
     For gas hot water systems, the yearly emissions are simply calculated by multiplying the
     total gas usage by the emissions intensity of gas.
-
+                
+    Note: Emissions projections over a 10-year period are not currently supported, as dynamic grid decarbonisation and gas emissions trajectories are not incorporated into this version of the model.
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <a name="billing-types"></a>
     ## 2. Billing types
 
     The billing type, or tariff, determines how the household is charged for electricity
@@ -101,7 +110,9 @@ def render(data):
     
     3. **Time-varying rate electricity**: the rate charged for electricity depends on the
     time of use.
-
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <a name="hot-water-heaters"></a>
     ## 3. Hot water heaters
 
     ### 3.1 Electric
@@ -153,7 +164,9 @@ def render(data):
     electricity systems. However, the complexity of running water pipes on and off your
     roof, as well as the pumps needed for some systems, is an additional
     consideration.
-
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <a name="hot-water-control"></a>
     ## 4. Hot water control
 
     Some hot water systems can be controlled so they use electricity when it is cheaper
@@ -209,22 +222,25 @@ def render(data):
     electricity being exported to the grid. The control option is only available for
     electric heaters with the 'Flat rate electricity' or 'Controlled load discount
     electricity' billing type.
-
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <a name="hot-water-usage-patterns"></a>
     ## 5. Hot water usage patterns
 
     Hot water heating was simulated with a number of different hot water usage patterns.
     The user can choose the one that best matches their own usage pattern or consider
     how a hot water system might perform across several patterns if they are unsure
     which one best matches them. The chart below shows when water is used across the
-    day for each of the six usage patterns.""")
+    day for each of the six usage patterns.""", unsafe_allow_html=True)
 
     # Add hot water usage patterns graph image using columns for centering
     a, b, c = st.columns([1, 3, 1])
     with b:
         st.image("images/usage_patterns.png", use_container_width=True)
 
-    st.markdown("""
 
+    st.markdown("""
+    <a name="options-explored"></a>
     ## 6. Options explored
 
     Not all system configurations have been modelled. Typically, when system
@@ -232,7 +248,7 @@ def render(data):
     make sense from a technical perspective, e.g., it does not make sense to model a gas
     storage heater with a flat rate electricity billing type. The complete set of
     configurations that have been modelled are shown in the table below.
-    """)
+    """, unsafe_allow_html=True)
     cols = ["Heater", "Heater control", "Hot water billing type", "Solar"]
     show_data = data.loc[:, cols]
     show_data = show_data.drop_duplicates(cols)

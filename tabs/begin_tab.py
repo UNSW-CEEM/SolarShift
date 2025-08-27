@@ -39,7 +39,7 @@ def render(data, postcode_df):
         """, unsafe_allow_html=True)
         
         st.markdown("<h3 style='color: #FFA000;'>Tell us about your house:</h3>", unsafe_allow_html=True)
-        st.markdown("Complete the questions below and we will estimate your hot water heating costs.")
+        st.markdown("Complete the questions below and we will estimate your new hot water heating costs.")
         st.markdown("Privacy", help="Your data is not stored by SolarShift Customer Hot Water Road Map tool. The tool may use data only for research purposes without any personal or confidential information.")
 
         # Remember postcode using session state
@@ -107,24 +107,55 @@ def render(data, postcode_df):
             st.plotly_chart(chart, use_container_width=True)
 
         with st.expander("Simple financial summary: Net present cost over 10yrs", expanded=True):
-            columns_to_plot = ["Net present cost ($)"]
+            # Step 1: Create two new metrics
+            data["Net present cost (excl. Up front)"] = (
+                data["Net present cost ($)"] - data["Up front cost ($)"]
+            )
+            data["Net present cost (incl. Up front)"] = data["Net present cost ($)"]
 
+            # Step 2: Reshape data for grouped bar chart
+            bar_data = data[[
+                "System", 
+                "Net present cost (excl. Up front)", 
+                "Net present cost (incl. Up front)"
+            ]]
+            bar_data = bar_data.melt(
+                id_vars="System", 
+                var_name="Metric", 
+                value_name="Cost ($)"
+            )
+
+            # Step 3: Create grouped bar chart
             bar_chart = px.bar(
-                data, x="System", y=columns_to_plot, text_auto=True, barmode="group"
+                bar_data,
+                x="System",
+                y="Cost ($)",
+                color="Metric",
+                barmode="group",
+                text_auto=True,
+            )
+
+            # Step 4: Apply formatting
+            bar_chart.update_layout(
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+                bargap=0.3
             )
 
             apply_chart_formatting(
                 bar_chart,
                 yaxes_title="Net present cost ($)",
-                show_legend=False,
-                height=200,
+                show_legend=True,
+                height=300,
             )
 
+            # Step 5: Display chart
             st.plotly_chart(
-                bar_chart,
-                use_container_width=True,
-                key="Net present cost ($) simple",
+                bar_chart, 
+                use_container_width=True, 
+                key="Net present cost ($) simple"
             )
+
+
         
         # Payback period calculation and logic from Gas and Electric to HPs Systems
 
@@ -148,7 +179,8 @@ def render(data, postcode_df):
                 st.markdown("<h3 style='color: #FFA000;'>Would you like to find out the finances and emissions after switching to a heat-pump?</h3>", unsafe_allow_html=True)
                 option = st.radio("Do you want to change to a heat pump?", ["Yes, my current system comes to the end of life and needs a replacement", "Yes, I just want a more efficient system", "No"], index=2)
                 if option != "No":
-                    discount_rate = st.selectbox("Select discount rate:", [0.02, 0.04, 0.06], index=0)
+                    st.markdown("**Select discount rate:**")
+                    discount_rate = st.selectbox("", [0.02, 0.04, 0.06], index=0)
                     payback_data = []
                     for hp_type in ["Premium Heat Pump", "Standard Heat Pump"]:
                         if values["heater"] in ["Gas Instant", "Gas Storage"]:

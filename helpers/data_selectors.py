@@ -84,27 +84,27 @@ def build_interactive_data_filter(
         key = f"select_{group_key}_{key_version}"
         KEY = key.upper()
 
-        # Preload from prefill_values
+        # Determine default value from prefill or fallback to first option
         default_value = prefill_values.get(group_key)
-        if default_value and default_value in options:
-            st.session_state[KEY] = default_value
+        if default_value not in options:
+            default_value = options[0] if options else None
 
-        # Remove invalid value
-        if KEY in st.session_state and st.session_state[KEY] not in options:
-            st.session_state.pop(KEY)
-
-        if KEY not in st.session_state:
-            st.selectbox(group, options, key=key, label_visibility=label_visibility, help=help_text)
+        # Render the selectbox using index, not by pre-setting session state
+        if default_value in options:
+            default_index = options.index(default_value)
         else:
-            selected_value = st.session_state[KEY]
-            if selected_value in options:
-                index = options.index(selected_value)
-            else:
-                index = 0
-            st.selectbox(group, options, index=index, key=key, label_visibility=label_visibility, help=help_text)
+            default_index = 0
 
-        # Final value from session
-        selected = st.session_state[key]
+        selected = st.selectbox(
+            group,
+            options,
+            index=default_index,
+            key=key,
+            label_visibility=label_visibility,
+            help=help_text
+        )
+
+        # Set uppercase version of session key to track final value
         if selected == "---":
             st.session_state[KEY] = None
         else:
@@ -114,6 +114,7 @@ def build_interactive_data_filter(
             selected = selected.item()
 
         return selected
+
 
     # Store selected values
     values = {}

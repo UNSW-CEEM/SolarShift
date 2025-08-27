@@ -26,7 +26,7 @@ def render(data):
 
 
     # Create 3-column layout
-    left, middle, right = st.columns([1.75, 5, 1.75])
+    left, middle, right = st.columns([3.8, 5.2, 3.8])
 
     with left:
         st.markdown(
@@ -75,7 +75,7 @@ def render(data):
             ]
             bar_chart = px.bar(
                 system_comparison_chart_data, x="System", y=columns_to_plot,
-                text_auto=True, barmode="group", height=400
+                text_auto=True, barmode="group", height=500
             )
             apply_chart_formatting(bar_chart, yaxes_title="Costs")
             bar_chart.update_xaxes(
