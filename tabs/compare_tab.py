@@ -12,7 +12,18 @@ def render(data):
 
     # Load data and postcode mapping on each rerun
     data, postcode_df = load_and_preprocess_data()
-    
+
+    # Only set defaults the very first time Compare is ever opened in this session
+    if "compare_initialized" not in st.session_state:
+        st.session_state["compare_initialized"] = True
+        # If user opens Compare tab directly (no Begin), set defaults
+        st.session_state.setdefault("select_location_two", 2010)
+        st.session_state.setdefault("select_location_three", 2010)
+
+    # Remember last selections on Compare (so switching tabs doesn't reset choices)
+    prefill_two = st.session_state.get("compare_values_two", {})
+    prefill_three = st.session_state.get("compare_values_three", {})
+
     # Remembering postcode input from Begin tab
     data_two_slice = data.copy()
     loc = st.session_state.get("select_location_two")
@@ -24,7 +35,6 @@ def render(data):
     if loc:
         data_three_slice = data_three_slice[data_three_slice["Location"] == loc]
 
-
     # Create 3-column layout
     left, middle, right = st.columns([3.8, 5.2, 3.8])
 
@@ -34,7 +44,11 @@ def render(data):
             unsafe_allow_html=True
         )
         with st.expander("Current system", expanded=True):
-            data_two, values_two = build_interactive_data_filter(data_two_slice, key_version="two")
+            data_two, values_two = build_interactive_data_filter(
+                data_two_slice,
+                key_version="two",
+                prefill_values=prefill_two
+            )
 
     with right:
         st.markdown(
@@ -42,18 +56,40 @@ def render(data):
             unsafe_allow_html=True
         )
         with st.expander("Alternative system", expanded=True):
-            data_three, values_three = build_interactive_data_filter(data_three_slice, key_version="three")
+            data_three, values_three = build_interactive_data_filter(
+                data_three_slice,
+                key_version="three",
+                prefill_values=prefill_three
+            )
 
+    # Save last selections for next time user returns to Compare
+    st.session_state["compare_values_two"] = values_two.copy()
+    st.session_state["compare_values_three"] = values_three.copy()
+
+    # Ensure we only plot one scenario per side
+    if data_two.empty or data_three.empty:
+        st.warning("No matching scenario found for one of the selections.")
+        st.stop()
+
+    # If multiple rows remain (e.g., Location not constrained), pick one deterministically
+    data_two = data_two.sort_values("Location").head(1)
+    data_three = data_three.sort_values("Location").head(1)
 
     with middle:
         # Prepare data for comparison charts
         current_system_data_chart = data_two.copy()
-        current_system_data_chart.insert(0, "System", "<span style='font-size:16px;'><b>Current system</b></span>")
+        current_system_data_chart.insert(
+            0, "System", "<span style='font-size:16px;'><b>Current system</b></span>"
+        )
 
         alternative_system_data_chart = data_three.copy()
-        alternative_system_data_chart.insert(0, "System", "<span style='font-size:16px;'><b>Alternative system</b></span>")
+        alternative_system_data_chart.insert(
+            0, "System", "<span style='font-size:16px;'><b>Alternative system</b></span>"
+        )
 
-        system_comparison_chart_data = pd.concat([current_system_data_chart, alternative_system_data_chart])
+        system_comparison_chart_data = pd.concat(
+            [current_system_data_chart, alternative_system_data_chart]
+        )
 
         # System label for tables (plain text)
         current_system_data_table = data_two.copy()
@@ -62,8 +98,9 @@ def render(data):
         alternative_system_data_table = data_three.copy()
         alternative_system_data_table.insert(0, "System", "Alternative system")
 
-        system_comparison_table_data = pd.concat([current_system_data_table, alternative_system_data_table])
-
+        system_comparison_table_data = pd.concat(
+            [current_system_data_table, alternative_system_data_table]
+        )
 
         # Spending comparison
         with st.expander("Spending comparison", expanded=True):
@@ -74,33 +111,60 @@ def render(data):
                 "Decrease in solar export revenue ($/yr)",
             ]
             bar_chart = px.bar(
-                system_comparison_chart_data, x="System", y=columns_to_plot,
-                text_auto=True, barmode="group", height=500
+                system_comparison_chart_data,
+                x="System",
+                y=columns_to_plot,
+                text_auto=True,
+                barmode="group",
+                height=500,
             )
             apply_chart_formatting(bar_chart, yaxes_title="Costs")
             bar_chart.update_xaxes(
                 tickangle=0, automargin=True, tickfont=dict(size=12), ticklabelstandoff=15
             )
-            bar_chart.update_layout(legend=dict(orientation="h", y=1.2, x=0.5, xanchor='center'))
+            # Prevent legend clipping
+            bar_chart.update_layout(
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    x=0.5,
+                    xanchor="center",
+                ),
+                margin=dict(t=90, b=40, l=40, r=40),
+            )
             st.plotly_chart(bar_chart, use_container_width=True, key="Spending")
 
         # Net present cost plot
         with st.expander("Simple financial comparison: over 10 years", expanded=False):
             bar_chart = px.bar(
-                system_comparison_chart_data, x="System", y=["Net present cost ($)"],
-                text_auto=True, barmode="group"
+                system_comparison_chart_data,
+                x="System",
+                y=["Net present cost ($)"],
+                text_auto=True,
+                barmode="group",
             )
-            apply_chart_formatting(bar_chart, yaxes_title="Net present cost ($)",
-                                   show_legend=False, height=250)
+            apply_chart_formatting(
+                bar_chart,
+                yaxes_title="Net present cost ($)",
+                show_legend=False,
+                height=250,
+            )
             st.plotly_chart(bar_chart, use_container_width=True, key="Net present cost ($)")
 
         # CO2 emissions
         with st.expander("Environmental comparison", expanded=False):
             bar_chart = px.bar(
-                system_comparison_chart_data, x="System", y=["CO2 emissions (tons/yr)"],
-                text_auto=True, barmode="group", height=250
+                system_comparison_chart_data,
+                x="System",
+                y=["CO2 emissions (tons/yr)"],
+                text_auto=True,
+                barmode="group",
+                height=250,
             )
-            apply_chart_formatting(bar_chart, yaxes_title="CO2 emissions (tons/yr)", show_legend=False)
+            apply_chart_formatting(
+                bar_chart, yaxes_title="CO2 emissions (tons/yr)", show_legend=False
+            )
             bar_chart.update_traces(texttemplate="%{y:.2f}")
             st.plotly_chart(bar_chart, use_container_width=True, key="Environmental")
 
@@ -109,9 +173,9 @@ def render(data):
             values_two["household_occupants"] = str(values_two["household_occupants"])
             values_three["household_occupants"] = str(values_three["household_occupants"])
             comp = pd.DataFrame({
-                "Option": list(map(str,values_two.keys())),
-                "Current system": list(map(str,values_two.values())),
-                "Alternative system": list(map(str,values_three.values())),
+                "Option": list(map(str, values_two.keys())),
+                "Current system": list(map(str, values_two.values())),
+                "Alternative system": list(map(str, values_three.values())),
             })
             st.dataframe(comp, hide_index=True)
 
@@ -124,8 +188,7 @@ def render(data):
             "Rebates ($)": "Rebates",
             "CO2 emissions (tons/yr)": "CO₂ (t/yr)",
             "Annual energy consumption (kWh)": "Annual (kWh)",
-            "Annual supply cost ($/yr)": "Annual supply ($/yr)",  # <-- Add SMA here
-            # Add more if needed
+            "Annual supply cost ($/yr)": "Annual supply ($/yr)",
         }
 
         # Tabular metrics
@@ -138,7 +201,7 @@ def render(data):
             zero_cols = [col for col in numeric_cols if table_df[col].sum() == 0]
             table_df = table_df.drop(columns=zero_cols)
 
-            # Format selected columns for display only (no change to original data)
+            # Format selected columns for display only
             formatted_df = table_df.copy()
             if "NPC ($)" in formatted_df.columns:
                 formatted_df["NPC ($)"] = formatted_df["NPC ($)"].map(lambda x: f"{x:,.0f}")
@@ -151,16 +214,20 @@ def render(data):
             if "Annual (kWh)" in formatted_df.columns:
                 formatted_df["Annual (kWh)"] = formatted_df["Annual (kWh)"].map(lambda x: f"{x:,.0f}")
 
-            st.dataframe(formatted_df, hide_index=True, column_config={
-                "Annual ($/yr)": st.column_config.NumberColumn(width="small"),
-                "Annual supply ($/yr)": st.column_config.NumberColumn(width="small"),
-                "Δ FIT ($/yr)": st.column_config.NumberColumn(width="small"),
-                "CO₂ (t/yr)": st.column_config.NumberColumn(width="small"),
-                "Location": None,
-                "Household occupants": None,
-                "Hot water billing type": None,
-                "Heater": None,
-                "Heater control": None,
-                "Solar": None,
-                "Hot water usage pattern": None,
-            })
+            st.dataframe(
+                formatted_df,
+                hide_index=True,
+                column_config={
+                    "Annual ($/yr)": st.column_config.NumberColumn(width="small"),
+                    "Annual supply ($/yr)": st.column_config.NumberColumn(width="small"),
+                    "Δ FIT ($/yr)": st.column_config.NumberColumn(width="small"),
+                    "CO₂ (t/yr)": st.column_config.NumberColumn(width="small"),
+                    "Location": None,
+                    "Household occupants": None,
+                    "Hot water billing type": None,
+                    "Heater": None,
+                    "Heater control": None,
+                    "Solar": None,
+                    "Hot water usage pattern": None,
+                },
+            )
